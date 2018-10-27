@@ -91,10 +91,9 @@ func main() {
   s := Server{
     Pages: map[string]func(io.Writer) error {
       "/": func(w io.Writer) error {
-        tmpl.Execute(w, Index{
+        return tmpl.Execute(w, Index{
           Title: "My Cool Guetbook",
         })
-        return nil
       },
     },
   }
