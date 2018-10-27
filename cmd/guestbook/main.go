@@ -20,6 +20,12 @@ const index = `
 		<title>{{.Title}}</title>
 	</head>
 	<body>
+    <form method="POST" action="/">
+      <input type="text" name="name" />
+      <textarea name="message"></textarea>
+      <input type="submit" />
+    </form>
+
 		{{range .Items}}
       <div>{{ . }}</div>
     {{else}}
@@ -38,6 +44,16 @@ type Server struct {
 
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
   log.Printf("got request %s", req.URL)
+  if req.Method == "POST" {
+    if err := req.ParseForm(); err != nil {
+      res.WriteHeader(400)
+      return
+    }
+    for key, values := range req.PostForm {
+      log.Printf("key=%q values=%v", key, values)
+    }
+  }
+
   fn, ok := s.Pages[req.URL.Path]
   if !ok {
     res.WriteHeader(404)
@@ -66,5 +82,5 @@ func main() {
     },
   }
 
-  http.ListenAndServe(*addr, &s)
+  log.Fatal(http.ListenAndServe(*addr, &s))
 }
