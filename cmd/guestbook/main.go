@@ -6,6 +6,7 @@ import (
   "io"
   "log"
   "net/http"
+  "sync"
 )
 
 var (
@@ -21,25 +22,37 @@ const index = `
 	</head>
 	<body>
     <form method="POST" action="/">
-      <input type="text" name="name" />
+      <input type="text" name="author" />
       <textarea name="message"></textarea>
       <input type="submit" />
     </form>
 
-		{{range .Items}}
-      <div>{{ . }}</div>
+		{{range .Posts}}
+      <p>
+        <div><strong>{{ .Author }}</strong></div>
+        <div>{{ .Message }}</div>
+      </p>
     {{else}}
-    <div><strong>no rows</strong></div>{{end}}
+      <div><strong>no rows</strong></div>
+    {{end}}
 	</body>
 </html>`
 
 type Index struct{
   Title string
-  Items []string
+  Posts []Post
+}
+
+type Post struct{
+  Author string
+  Message string
 }
 
 type Server struct {
   Pages map[string]func(io.Writer) error
+
+  mu sync.Mutex
+  Posts []Post
 }
 
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
@@ -49,9 +62,13 @@ func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
       res.WriteHeader(400)
       return
     }
-    for key, values := range req.PostForm {
-      log.Printf("key=%q values=%v", key, values)
+    post := Post{
+      Author: req.PostFormValue("author"),
+      Message: req.PostFormValue("message"),
     }
+    s.mu.Lock()
+    s.Posts = append(s.Posts, post)
+    s.mu.Unlock()
   }
 
   fn, ok := s.Pages[req.URL.Path]
