@@ -55,6 +55,12 @@ type Server struct {
   Posts []Post
 }
 
+func (s *Server) GetPosts() []Post {
+  s.mu.Lock()
+  defer s.mu.Unlock()
+  return s.Posts
+}
+
 func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
   log.Printf("got request %s", req.URL)
   if req.Method == "POST" {
@@ -79,7 +85,6 @@ func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
   if err := fn(res); err != nil {
     res.WriteHeader(500)
   }
-  //res.Write([]byte("hi there!"))
 }
 
 func main() {
@@ -88,15 +93,17 @@ func main() {
     log.Fatal(err)
   }
 
-  s := Server{
+  var s *Server
+  s = &Server{
     Pages: map[string]func(io.Writer) error {
       "/": func(w io.Writer) error {
         return tmpl.Execute(w, Index{
           Title: "My Cool Guetbook",
+          Posts: s.GetPosts(),
         })
       },
     },
   }
 
-  log.Fatal(http.ListenAndServe(*addr, &s))
+  log.Fatal(http.ListenAndServe(*addr, s))
 }
