@@ -51,13 +51,13 @@ type Post struct{
 type Server struct {
   Pages map[string]func(io.Writer) error
 
-  mu sync.Mutex
+  mu sync.RWMutex
   Posts []Post
 }
 
 func (s *Server) GetPosts() []Post {
-  s.mu.Lock()
-  defer s.mu.Unlock()
+  s.mu.RLock()
+  defer s.mu.RUnlock()
   return s.Posts
 }
 
