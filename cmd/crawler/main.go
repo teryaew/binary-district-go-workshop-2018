@@ -2,6 +2,7 @@ package main
 
 import (
   "flag"
+  "fmt"
   "log"
   "net/http"
   "net/http/httputil"
@@ -12,13 +13,24 @@ var (
   parallelism = flag.Int("parallelism", 5, "number of parallel requests")
 )
 
+type Result struct{}
+
 func main() {
   flag.Parse()
 
   var (
     sem = make(chan struct{}, *parallelism)
     work = make(chan *url.URL)
+    results = make(chan Result)
+    done = make(chan bool)
   )
+
+  go func() {
+    defer func() { close(done) }()
+    for r := range results {
+      fmt.Printf("got result %v\n", r)
+    }
+  }()
 
   for _, s := range flag.Args() {
     u, err := url.ParseRequestURI(s)
@@ -31,14 +43,25 @@ func main() {
       default:
         select {
         case sem <- struct{}{}:
-          go process(work, u)
+          go process(sem, work, results, u)
         case work <- u:
         }
     }
   }
+
+  close(work)
+
+  // Wait for all workers are done
+  for i := 0; i < *parallelism; i++ {
+    sem <- struct{}{}
+  }
+
+  close(results)
+  <-done
 }
 
-func process(work <-chan *url.URL, u *url.URL) {
+func process(sem <-chan struct{}, work <-chan *url.URL, results chan<- Result, u *url.URL) {
+  defer func() { <-sem }()
   for {
     resp, err := http.Get(u.String())
     if err != nil {
@@ -46,7 +69,14 @@ func process(work <-chan *url.URL, u *url.URL) {
       continue
     }
     dumpResponse(resp)
-    u = <-work
+
+    results <- Result{}
+
+    var ok bool
+    u, ok = <-work
+    if !ok {
+      return
+    }
   }
 }
 
