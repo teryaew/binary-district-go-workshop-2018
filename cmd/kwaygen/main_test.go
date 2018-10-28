@@ -6,10 +6,19 @@ import (
   "testing"
 )
 
+type DevNullStringWriter struct{}
+
+func (DevNullStringWriter) WriteString(s string) (int, error) {
+  return len(s), nil
+}
+
 // go test -bench=. ./cmd/kwaygen
 // go test -bench=. -benchmem -v ./cmd/kwaygen
+// go test -bench=. -benchmem -v ./cmd/kwaygen --memprofile=mem.out
+// go tool pprof -alloc_objects kwaygen.test mem.out
+// go test ./cmd/kwaygen -run=xxxx -bench=. -benchmem -memprofile=mem.out
 func BenchmarkWriteRandNumber(b *testing.B) {
-  var buf bytes.Buffer
+  var buf DevNullStringWriter
   for i := 0; i < b.N; i++ {
     writeRandNumber(42, &buf)
   }

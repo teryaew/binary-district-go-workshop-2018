@@ -3,6 +3,7 @@
 package main
 
 import (
+  "bufio"
   "flag"
   "fmt"
   "math/rand"
@@ -53,9 +54,11 @@ func genFile(sem chan struct{}, ch chan Result, i, m int) {
   }
   defer file.Close()
 
+  buf := bufio.NewWriter(file)
+
   for j := 0; j < m; j++ {
     x := rand.Intn(1000)
-    err := writeRandNumber(x, file)
+    err := writeRandNumber(x, buf)
     if err != nil {
       ch <- Result{
         Err: err,
@@ -65,6 +68,7 @@ func genFile(sem chan struct{}, ch chan Result, i, m int) {
   }
 
   ch <- Result{
+    Err: buf.Flush(),
     File: name,
   }
 }
@@ -75,6 +79,9 @@ type StringWriter interface {
 
 func writeRandNumber(x int, dest StringWriter) error {
   s := strconv.Itoa(x)
-  _, err := dest.WriteString(s + "\n")
+  _, err := dest.WriteString(s)
+  if err == nil {
+    _, err = dest.WriteString("\n")
+  }
   return err
 }
