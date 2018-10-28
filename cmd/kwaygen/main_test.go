@@ -14,8 +14,9 @@ func (DevNullStringWriter) WriteString(s string) (int, error) {
 
 // go test -bench=. ./cmd/kwaygen
 // go test -bench=. -benchmem -v ./cmd/kwaygen
-// go test -bench=. -benchmem -v ./cmd/kwaygen --memprofile=mem.out
-// go tool pprof -alloc_objects kwaygen.test mem.out
+// go test -bench=. -benchmem -v ./cmd/kwaygen --memprofile=mem.out --cpuprofile=cpu.out
+// go tool pprof -alloc_objects kwaygen.test mem.out  ---> list Rand
+// go tool pprof kwaygen.test cpu.out  ---> top
 // go test ./cmd/kwaygen -run=xxxx -bench=. -benchmem -memprofile=mem.out
 func BenchmarkWriteRandNumber(b *testing.B) {
   var buf DevNullStringWriter
