@@ -10,18 +10,25 @@ import (
 
 func main() {
   go func() {
-    for range time.Tick(time.Second) {
-      fmt.Printf("hearbeat\n")
+    lastTick := time.Now()
+    for now := range time.Tick(time.Second) {
+      realSleep := now.Sub(lastTick)
+      fmt.Printf("hearbeat: %s\n", realSleep)
+      lastTick = now
+
+      if diff := realSleep - time.Second; diff > 0 && diff > time.Second {
+        panic("WTF")
+      }
     }
   }() // Healthchecker goroutine
 
   go func() {
     for i := 0; ; i++ {
-      if i % 10000000000 == 0 {
+      if i % 500000000000 == 0 {
         runtime.Gosched()
       }
     }
   }()  // Non-cooperative goroutine
 
-  <-time.After(10 * time.Second)
+  <-time.After(15 * time.Second)
 }
