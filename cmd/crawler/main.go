@@ -66,37 +66,30 @@ func main() {
   <-done
 }
 
+func countAt(u *url.URL) (int, error) {
+  resp, err := http.Get(u.String())
+  if err != nil {
+    return 0, err
+  }
+
+  body, err := ioutil.ReadAll(resp.Body)
+  if err != nil {
+    return 0, err
+  }
+  return bytes.Count(body, []byte("go")), nil
+}
+
 func process(sem <-chan struct{}, work <-chan *url.URL, results chan<- Result, u *url.URL) {
   defer func() { <-sem }()
+  var ok bool
   for {
-    resp, err := http.Get(u.String())
-    if err != nil {
-      log.Printf("error doing request for %q: %v", u, err)
-      continue
-    }
-    //dumpResponse(resp)
+    r := Result{URL: u}
+    r.Count, r.Err = countAt(u)
+    results <- r
 
-    body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-      results <- Result{
-        URL: u,
-        Err: err,
-      }
-      goto next
+    if u, ok = <-work; !ok {
+      return
     }
-
-    n := bytes.Count(body, []byte("go"))
-    results <- Result{
-      URL: u,
-      Count: n,
-    }
-
-    next:
-      var ok bool
-      u, ok = <-work
-      if !ok {
-        return
-      }
   }
 }
 
