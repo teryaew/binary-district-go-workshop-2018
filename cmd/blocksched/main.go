@@ -4,6 +4,7 @@ package main
 
 import (
   "fmt"
+  "runtime"
   "time"
 )
 
@@ -15,7 +16,11 @@ func main() {
   }() // Healthchecker goroutine
 
   go func() {
-    for {}
+    for i := 0; ; i++ {
+      if i % 10000000000 == 0 {
+        runtime.Gosched()
+      }
+    }
   }()  // Non-cooperative goroutine
 
   <-time.After(10 * time.Second)
