@@ -5,6 +5,8 @@ import (
   "log"
   "net"
   "sync"
+
+  "github.com/gobwas/ws"
 )
 
 var (
@@ -12,8 +14,8 @@ var (
 )
 
 type Chat struct{
-  users map[string]*User
   mu sync.Mutex
+  users map[string]*User
 }
 
 func NewChat() *Chat {
@@ -23,10 +25,10 @@ func NewChat() *Chat {
 }
 
 func (c *Chat) Broadcast(msg []byte) {
-  c.mu.RLock()
-  defer c.mu.RUnlock()
+  c.mu.Lock()
+  defer c.mu.Unlock()
 
-  for name, user := range c.users {
+  for _, user := range c.users {
     user.Send(msg)
   }
 }
@@ -66,13 +68,18 @@ func (u *User) Send(msg []byte) error {
 func (u *User) drainSendQ() {
   for msg := range u.sendq {
     // FIXME: handle errors
+    ws.WriteFrame(u.conn, ws.NewTextFrame(msg))
     u.conn.Write(msg)
   }
 }
 
 func (u *User) Recv() ([]byte, error) {
-  // Read websocket frames
-  u.conn
+  // Read websocket frame
+  f, err := ws.ReadFrame(u.conn)
+  if err != nil {
+    return nil, err
+  }
+  return f.Payload, nil
 }
 
 func (u *User) Close() {
@@ -93,9 +100,7 @@ func main() {
     if err != nil {
       log.Fatal(err)
     }
-    u := &User{
-      conn: conn,
-    }
+    u := NewUser(100, conn)
     c.Register(u)
 
     go func() {
@@ -109,8 +114,6 @@ func main() {
       c.Broadcast(msg)
     }()
 
-    go func() {
-      u.Send()
-    }()
+    go u.drainSendQ()
   }
 }
