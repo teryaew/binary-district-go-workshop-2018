@@ -4,6 +4,7 @@ import (
   "bytes"
   "flag"
   "fmt"
+  "github.com/teryaew/bd/pool"
   "io/ioutil"
   "log"
   "net/http"
@@ -25,8 +26,6 @@ func main() {
   flag.Parse()
 
   var (
-    sem = make(chan struct{}, *parallelism)
-    work = make(chan *url.URL)
     results = make(chan Result)
     done = make(chan bool)
   )
@@ -38,30 +37,22 @@ func main() {
     }
   }()
 
+  p := pool.NewPool(*parallelism)
+
   for _, s := range flag.Args() {
     u, err := url.ParseRequestURI(s)
     if err != nil {
       log.Fatalf("invalid url %q: %v", s, err)
     }
 
-    select {
-    case work <- u:
-      default:
-        select {
-        case sem <- struct{}{}:
-          go process(sem, work, results, u)
-        case work <- u:
-        }
-    }
+    p.Exec(func() {
+      r := Result{URL: u}
+      r.Count, r.Err = countAt(u)
+      results <- r
+    })
   }
 
-  close(work)
-
-  // Wait for all workers are done
-  for i := 0; i < *parallelism; i++ {
-    sem <- struct{}{}
-  }
-
+  p.Close()
   close(results)
   <-done
 }
@@ -77,20 +68,6 @@ func countAt(u *url.URL) (int, error) {
     return 0, err
   }
   return bytes.Count(body, []byte("go")), nil
-}
-
-func process(sem <-chan struct{}, work <-chan *url.URL, results chan<- Result, u *url.URL) {
-  defer func() { <-sem }()
-  var ok bool
-  for {
-    r := Result{URL: u}
-    r.Count, r.Err = countAt(u)
-    results <- r
-
-    if u, ok = <-work; !ok {
-      return
-    }
-  }
 }
 
 func dumpResponse(resp *http.Response) {
