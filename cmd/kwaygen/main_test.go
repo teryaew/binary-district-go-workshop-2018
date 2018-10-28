@@ -6,6 +6,15 @@ import (
   "testing"
 )
 
+// go test -bench=. ./cmd/kwaygen
+// go test -bench=. -benchmem -v ./cmd/kwaygen
+func BenchmarkWriteRandNumber(b *testing.B) {
+  var buf bytes.Buffer
+  for i := 0; i < b.N; i++ {
+    writeRandNumber(42, &buf)
+  }
+}
+
 func TestWriteRandNumber(t *testing.T) {
   var buf bytes.Buffer
   if err := writeRandNumber(42, &buf); err != nil {
