@@ -55,8 +55,7 @@ func genFile(sem chan struct{}, ch chan Result, i, m int) {
 
   for j := 0; j < m; j++ {
     x := rand.Intn(1000)
-    s := strconv.Itoa(x)
-    _, err := file.WriteString(s + "\n")
+    err := writeRandNumber(x, file)
     if err != nil {
       ch <- Result{
         Err: err,
@@ -68,4 +67,14 @@ func genFile(sem chan struct{}, ch chan Result, i, m int) {
   ch <- Result{
     File: name,
   }
+}
+
+type StringWriter interface {
+  WriteString(string) (int, error)
+}
+
+func writeRandNumber(x int, dest StringWriter) error {
+  s := strconv.Itoa(x)
+  _, err := dest.WriteString(s + "\n")
+  return err
 }
