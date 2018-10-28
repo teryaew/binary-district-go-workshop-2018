@@ -35,7 +35,6 @@ func main() {
 
   go func() {
     for {
-      // Listen here
       conn, err := ln.Accept()
       if err != nil {
         panic(err)
