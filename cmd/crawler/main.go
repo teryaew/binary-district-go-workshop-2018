@@ -1,8 +1,10 @@
 package main
 
 import (
+  "bytes"
   "flag"
   "fmt"
+  "io/ioutil"
   "log"
   "net/http"
   "net/http/httputil"
@@ -13,7 +15,11 @@ var (
   parallelism = flag.Int("parallelism", 5, "number of parallel requests")
 )
 
-type Result struct{}
+type Result struct{
+  Err error
+  URL *url.URL
+  Count int
+}
 
 func main() {
   flag.Parse()
@@ -68,15 +74,29 @@ func process(sem <-chan struct{}, work <-chan *url.URL, results chan<- Result, u
       log.Printf("error doing request for %q: %v", u, err)
       continue
     }
-    dumpResponse(resp)
+    //dumpResponse(resp)
 
-    results <- Result{}
-
-    var ok bool
-    u, ok = <-work
-    if !ok {
-      return
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+      results <- Result{
+        URL: u,
+        Err: err,
+      }
+      goto next
     }
+
+    n := bytes.Count(body, []byte("go"))
+    results <- Result{
+      URL: u,
+      Count: n,
+    }
+
+    next:
+      var ok bool
+      u, ok = <-work
+      if !ok {
+        return
+      }
   }
 }
 
