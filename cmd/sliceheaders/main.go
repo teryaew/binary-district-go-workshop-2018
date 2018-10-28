@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+  "fmt"
+  "reflect"
+  "unsafe"
+)
 
 func main() {
   x := make([]int, 5, 5)
@@ -10,4 +14,9 @@ func main() {
   fmt.Println(x)
   fmt.Println(y)
   fmt.Println(z)
+
+  ns := []string{"X", "Y", "Z"}
+  h := (*reflect.SliceHeader)(unsafe.Pointer(&ns))
+
+  fmt.Printf("%v\n", h)
 }
